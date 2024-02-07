@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Selu383.SP24.Api\Selu383.SP24.Api.csproj" />
+    <ProjectReference Include="..\Selu383.SP24.Web\Selu383.SP24.Web.esproj" />
   </ItemGroup>
 
 </Project>
