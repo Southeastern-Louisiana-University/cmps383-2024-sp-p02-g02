@@ -44,35 +44,92 @@ using (var scope = app.Services.CreateScope())
         await db.SaveChangesAsync();
     }
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
-    var users = db.Set<User>();
+    var users = db.Set<Role>();
     if (!await users.AnyAsync())
     {
-        await UserManager.CreateAsync(new User { UserName = "galkadi" });
+        await roleManager.CreateAsync(new Role { Name = "Admin" });
     }
 
-    var userManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     var roles = db.Set<User>();
     if (!await users.AnyAsync())
     {
-        await RoleManager.CreateAsync(new User { UserName = "galkadi" });
+        await userManager.CreateAsync(new User { UserName = "galkadi" }, "");
     }
+
+    async void SeedData(ModelBuilder modelBuilder, UserManager<User> userManager, RoleManager<Role> roleManager)
+    {
+        // Seed roles using RoleManager
+        await SeedRoles(roleManager);
+
+        // Seed users using UserManager
+        await SeedUsers(userManager);
+
+        SeedData(modelBuilder, userManager, roleManager);
+    }
+
+    async Task SeedRoles(RoleManager<Role> roleManager)
+    {
+        string[] roleNames = { "Admin", "User" };
+
+        foreach (var roleName in roleNames)
+        {
+            var roleExists = await roleManager.RoleExistsAsync(roleName);
+            if (!roleExists)
+            {
+                // Create the role using RoleManager
+                var role = new Role { Name = roleName, NormalizedName = roleName.ToUpper() };
+                await roleManager.CreateAsync(role);
+            }
+        }
+    }
+
+    async Task SeedUsers(UserManager<User> userManager)
+    {
+        var adminUser = new User { UserName = "galkadi" };
+        var bobUser = new User { UserName = "bob" };
+        var sueUser = new User { UserName = "sue" };
+
+        // Create users using UserManager
+        await CreateUserWithRole(userManager, adminUser, "Admin", "Password123!");
+        await CreateUserWithRole(userManager, bobUser, "User", "Password123!");
+        await CreateUserWithRole(userManager, sueUser, "User", "Password123!");
+    }
+
+    async Task CreateUserWithRole(UserManager<User> userManager, User user, string roleName, string password)
+    {
+        var userExists = await userManager.FindByNameAsync(user.UserName);
+        if (userExists == null)
+        {
+            // Create the user using UserManager
+            var result = await userManager.CreateAsync(user, password);
+
+            if (result.Succeeded)
+            {
+                // Assign the role using UserManager
+                await userManager.AddToRoleAsync(user, roleName);
+            }
+        }
+
+
+    }
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers();
+
+    app.Run();
 }
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
 
 //see: https://docs.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-8.0
 // Hi 383 - this is added so we can test our web project automatically
