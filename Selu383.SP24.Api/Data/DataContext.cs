@@ -9,7 +9,8 @@ namespace Selu383.SP24.Api.Data;
 public class DataContext : IdentityDbContext<User, Role, int, IdentityUserClaim<int>, UserRole, IdentityUserLogin<int>, IdentityRoleClaim<int>, IdentityUserToken<int>>
 {
 
-    public DataContext(DbContextOptions<DataContext> options, UserManager<User> userManager, RoleManager<Role> roleManager) : base(options)
+
+    public DataContext(DbContextOptions<DataContext> options) : base(options)
     {
 
 
