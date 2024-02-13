@@ -11,8 +11,35 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Add services to the container.
 builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DataContext")));
 
-builder.Services.AddIdentity<User, Role>()
-    .AddEntityFrameworkStores<DataContext>();
+builder.Services.AddIdentity<User, Role>(options =>
+  {
+      options.SignIn.RequireConfirmedAccount = false;
+      options.Password.RequireDigit = false;
+      options.Password.RequiredLength = 6;
+      options.Password.RequireNonAlphanumeric = false;
+      options.Password.RequireUppercase = false;
+  })
+     .AddEntityFrameworkStores<DataContext>()
+     .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = context =>
+    {
+        // Handle 401 Unauthorized
+        if (context.Request.Path.StartsWithSegments("/api") && context.Response.StatusCode == StatusCodes.Status302Found)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        }
+        else
+        {
+            // Handle 403 Forbidden or other redirects to login
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        }
+
+        return Task.CompletedTask;
+    };
+});
 
 builder.Services.AddControllers();
 
@@ -58,12 +85,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseRouting();
 app.UseAuthentication();
-app.UseAuthorization();
 
-app.MapControllers();
+app
+    .UseRouting()
+    .UseAuthorization()
+    .UseEndpoints(x =>
+    {
+        x.MapControllers();
+    });
+
+app.UseStaticFiles();
 
 app.Run();
 
@@ -83,7 +115,7 @@ async Task SeedRoles(RoleManager<Role> roleManager)
         if (!roleExists)
         {
             // Create the role using RoleManager
-            var role = new Role { Name = roleName, NormalizedName = roleName.ToUpper() };
+            var role = new Role { Name = roleName, NormalizedName = roleName.ToUpper(), RoleName = roleName };
             await roleManager.CreateAsync(role);
         }
     }
