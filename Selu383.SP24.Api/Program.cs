@@ -207,13 +207,31 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAuthentication();
 
-app
-    .UseRouting()
-    .UseAuthorization()
-    .UseEndpoints(x =>
+app 
+    .UseRouting();
+app.UseEndpoints(x =>
+{
+    x.MapControllers();
+
+});
+
+app.UseStaticFiles();
+
+ if (app.Environment.IsDevelopment())
+{
+    app.UseSpa(x =>
     {
-        x.MapControllers();
+        x.UseProxyToSpaDevelopmentServer("http://localhost:5173");
     });
+}
+else
+{
+    app.MapFallbackToFile("index.html");
+}
+
+app.UseAuthorization();
+
+app.MapControllers();
 
 app.Run();
 
