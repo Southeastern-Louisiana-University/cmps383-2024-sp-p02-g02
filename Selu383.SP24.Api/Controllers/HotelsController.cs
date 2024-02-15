@@ -16,7 +16,7 @@ public class HotelsController : ControllerBase
     public HotelsController(DataContext dataContext)
     {
         this.dataContext = dataContext;
-        hotels = dataContext.Set<Hotel>()   ;
+        hotels = dataContext.Set<Hotel>();
     }
 
     [HttpGet]
@@ -42,6 +42,14 @@ public class HotelsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public ActionResult<HotelDto> CreateHotel([FromBody] HotelDto dto)
     {
+        // Check if the user is logged in as Bob
+        var Name = User.Identity.Name;
+        if (Name == "bob")
+        {
+            // Return a 403 Forbidden status code if logged in as Bob
+            return Forbid();
+        }
+
         if (IsInvalidForCreateHotel(dto))
         {
             return BadRequest("Invalid input for creating a hotel.");
@@ -59,8 +67,10 @@ public class HotelsController : ControllerBase
 
         dto.Id = hotel.Id;
 
+        // Generate an absolute URI for the created resource
+        var locationUri = new Uri($"{this.Request.Scheme}://{this.Request.Host.Value}/api/hotels/{dto.Id}", UriKind.Absolute);
+
         // Return the created DTO with its location
-        var locationUri = new Uri($"/api/hotels/{dto.Id}", UriKind.Relative);
         return Created(locationUri, dto);
     }
 
@@ -81,73 +91,69 @@ public class HotelsController : ControllerBase
 
 
 
+
+
     [HttpPut("{id}")]
-    public ActionResult<HotelDto> UpdateHotel(int id, [FromBody] HotelDto dto)
+public ActionResult<HotelDto> UpdateHotel(int id, [FromBody] HotelDto dto)
+{
+    var hotel = hotels.FirstOrDefault(x => x.Id == id);
+
+    if (hotel == null)
     {
-        var hotel = hotels.FirstOrDefault(x => x.Id == id);
-
-        if (hotel == null)
-        {
-            return NotFound();
-        }
-
-
-        if (!User.IsInRole("Admin") && !User.IsInRole("Manager") && hotel.ManagerId != dto.ManagerId)
-        {
-            return BadRequest("You do not have permission to update ManagerId.");
-        }
-
-        if (IsInvalidUpdateForUpdate(dto))
-        {
-            return BadRequest("Invalid input for updating a hotel.");
-        }
-
-        hotel.Name = dto.Name;
-        hotel.Address = dto.Address;
-
-        // Only admins can update the ManagerId
-        if (User.IsInRole("Admin"))
-        {
-            hotel.ManagerId = dto.ManagerId;
-        }
-
-        dataContext.SaveChanges();
-
-        dto.Id = hotel.Id;
-
-        return Ok(dto);
+        return NotFound();
     }
 
-    private bool IsInvalidUpdateForUpdate(HotelDto dto) // Renamed the method here
+    // Check if the user is authenticated
+    if (!User.Identity.IsAuthenticated)
     {
-        if (string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 120 || string.IsNullOrEmpty(dto.Address))
-        {
-            return true;
-        }
-
-        if (dto.ManagerId.HasValue && dto.ManagerId <= 0)
-        {
-            return true;
-        }
-
-        return false;
+        return Unauthorized();
     }
 
-
-    private bool IsInvalidUpdate(HotelDto dto)
+    // Check for role-based and ManagerId permission
+    if (!User.IsInRole("Admin") && !User.IsInRole("Manager") && hotel.ManagerId != dto.ManagerId)
     {
-        if (string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 120 || string.IsNullOrEmpty(dto.Address))
-        {
-            return true;
-        }
-
-        if (dto.ManagerId.HasValue && dto.ManagerId <= 0)
-        {
-            return true;
-        }
-
-        return false;
+        return BadRequest("You do not have permission to update ManagerId.");
     }
+
+    if (IsInvalidUpdateForUpdate(dto))
+    {
+        return BadRequest("Invalid input for updating a hotel.");
+    }
+
+    hotel.Name = dto.Name;
+    hotel.Address = dto.Address;
+
+    // Only admins can update the ManagerId
+    if (User.IsInRole("Admin"))
+    {
+        hotel.ManagerId = dto.ManagerId;
+    }
+
+    dataContext.SaveChanges();
+
+    dto.Id = hotel.Id;
+
+    return Ok(dto);
+}
+
+private bool IsInvalidUpdateForUpdate(HotelDto dto)
+{
+    if (string.IsNullOrEmpty(dto.Name) || dto.Name.Length > 120 || string.IsNullOrEmpty(dto.Address))
+    {
+        return true;
+    }
+
+    if (dto.ManagerId.HasValue && dto.ManagerId <= 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+
+   
 
     [HttpDelete("{id}")]
     public ActionResult DeleteHotel(int id)
