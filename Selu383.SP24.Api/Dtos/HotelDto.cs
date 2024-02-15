@@ -1,4 +1,4 @@
-﻿namespace Selu383.SP24.Api.Features.Hotels;
+﻿namespace Selu383.SP24.Api.Dtos;
 
 public class HotelDto
 {
@@ -8,6 +8,5 @@ public class HotelDto
 
     public string Address { get; set; }
 
-    public int ?ManagerId {  get; set; }
-
+    public int? ManagerId { get; set; }
 }
