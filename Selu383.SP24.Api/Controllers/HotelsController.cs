@@ -15,7 +15,7 @@ public class HotelsController : ControllerBase
     public HotelsController(DataContext dataContext)
     {
         this.dataContext = dataContext;
-        hotels = dataContext.Set<Hotel>();
+        hotels = dataContext.Set<Hotel>()   ;
     }
 
     [HttpGet]
