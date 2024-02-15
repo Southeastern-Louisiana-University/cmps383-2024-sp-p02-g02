@@ -5,15 +5,13 @@ using Selu383.SP24.Api.Data;
 using Selu383.SP24.Api.Dtos;
 using Selu383.SP24.Api.Features.UserRole;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
-namespace Selu383.SP24.Api.Controllers.CreateUser
+namespace Selu383.SP24.Api.Controllers
 {
-    [Route("api/users")]
     [ApiController]
-    
-    //[Authorize(Roles = "Admin")] // Only admins can access this endpoint
+    [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")] // Only admins can access this endpoint
     public class UsersController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
@@ -25,24 +23,11 @@ namespace Selu383.SP24.Api.Controllers.CreateUser
             _roleManager = roleManager;
         }
 
-        [HttpGet]
-        public IActionResult GetAllUsers()
-        {
-            var users = _userManager.Users.Select(user => new UserDto
-            {
-                Id = user.Id,
-                UserName = user.UserName,
-                Roles = _userManager.GetRolesAsync(user).Result.ToArray()
-            }).ToList();
-
-            return Ok(users);
-        }
-
         [HttpPost]
         public async Task<IActionResult> CreateUser(CreateUserDto createUserDto)
         {
             // Ensure at least one role is provided
-            if (createUserDto.Roles == null || createUserDto.Roles.Count() == 0)
+            if (createUserDto.Roles == null || createUserDto.Roles.Length == 0)
                 return BadRequest("At least one role must be provided.");
 
             // Validate roles
@@ -55,11 +40,11 @@ namespace Selu383.SP24.Api.Controllers.CreateUser
             // Check if username is unique
             var existingUser = await _userManager.FindByNameAsync(createUserDto.UserName);
             if (existingUser != null)
-                return Conflict("Username already exists.");
+                return BadRequest("Username already exists.");
 
             // Create the user
             var user = new User { UserName = createUserDto.UserName };
-            var result = await _userManager.CreateAsync(user);
+            var result = await _userManager.CreateAsync(user, createUserDto.Password);
             if (result.Succeeded)
             {
                 // Add roles to the user
